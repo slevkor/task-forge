@@ -51,6 +51,7 @@ export async function buildApp() {
     return reply.code(500).send({ error: "Internal server error" });
   });
 
+  // Exists for local orchestration checks (e.g. compose/dev scripts polling readiness).
   app.get("/health", { schema: { tags: ["System"], summary: "Health check" } }, async () => ({ status: "ok" }));
   await app.register(authRoutes, { prefix: "/api/auth" });
   await app.register(projectRoutes, { prefix: "/api/projects" });
