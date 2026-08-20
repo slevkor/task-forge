@@ -56,6 +56,8 @@ docs/
 ```bash
 npm run dev        # API on :4000 and web app on :5173
 npm run dev:all    # Also the CAO integration bridge (:4100) and cao-server (:9889)
+npm run dev:all:tailscale # dev:all, plus serves the web app over your tailnet
+npm run stop:tailscale    # Turn tailnet serving back off
 npm run build      # Production builds for all workspaces
 npm run typecheck  # Strict TypeScript checks
 npm test           # API integration tests
