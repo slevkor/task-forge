@@ -1,7 +1,17 @@
 import { config } from "./config.js";
 import { listUnresolvedLaunches, markResolved } from "./db.js";
-import { checkSession, cleanupSession } from "./cao.js";
+import { checkSession, cleanupSession, type SessionState } from "./cao.js";
 import { getTask, patchTask, postUpdate } from "./taskforge.js";
+
+// CAO's own status detector admits (status_monitor.py) that terminal status
+// "flap[s] rapidly between IDLE/COMPLETED and PROCESSING" — confirmed the hard
+// way: a reviewer session got read as terminal, killed, and torn down mid-task
+// (still running `tsc`, no verdict posted) on a single poll that happened to
+// land on a flap. Require the same non-running state twice in a row, one
+// sweep interval apart, before acting on it — a real completion stays
+// completed across two reads; a flap doesn't.
+const CONFIRMATIONS_REQUIRED = 2;
+const pendingConfirmations = new Map<string, { state: SessionState; count: number }>();
 
 // The only place any CAO session's completion is ever checked. Runs on an
 // interval, not per-request — the webhook handler never blocks on this.
@@ -15,7 +25,19 @@ export async function sweepOnce(log: { info: (o: unknown, msg?: string) => void;
       continue;
     }
 
-    if (check.state === "running") continue;
+    if (check.state === "running") {
+      pendingConfirmations.delete(launch.id);
+      continue;
+    }
+
+    const pending = pendingConfirmations.get(launch.id);
+    if (!pending || pending.state !== check.state) {
+      pendingConfirmations.set(launch.id, { state: check.state, count: 1 });
+      continue;
+    }
+    pending.count += 1;
+    if (pending.count < CONFIRMATIONS_REQUIRED) continue;
+    pendingConfirmations.delete(launch.id);
 
     if (check.state === "error") {
       log.error({ launch }, "CAO session ended in error/stuck state");
