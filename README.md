@@ -44,6 +44,7 @@ SQLite is the default for local development and is created at `data/taskforge.db
 apps/
   api/        Fastify API, SQLite/MySQL schema, seed, integration tests
   web/        React/Vite client
+  bridge/     Optional: translates ticket status changes into CAO agent runs
 packages/
   contracts/  Shared Zod validation and TypeScript domain types
 docs/
@@ -54,12 +55,43 @@ docs/
 
 ```bash
 npm run dev        # API on :4000 and web app on :5173
+npm run dev:all    # Also the CAO integration bridge (:4100) and cao-server (:9889)
 npm run build      # Production builds for all workspaces
 npm run typecheck  # Strict TypeScript checks
 npm test           # API integration tests
 npm run db:seed    # Idempotent demo seed
 npm run admin:bootstrap # Create or rotate the production administrator
 ```
+
+## Agent pipeline (optional)
+
+Task statuses can drive an external agent pipeline (product-manager,
+developer, and reviewer bots) via [CAO](https://github.com/awslabs/cli-agent-orchestrator).
+`apps/bridge` is the glue; the persona profiles it launches live in a CAO
+fork's `examples/task-forge/` directory, not in this repo.
+
+One-time setup:
+
+```bash
+brew install tmux                                  # CAO spawns agents in tmux sessions
+uv pip install -e /path/to/cli-agent-orchestrator   # editable install, puts `cao`/`cao-server` on PATH
+cao init
+
+# Build CAO's web dashboard once so cao-server can serve it at :9889 --
+# skip this if you installed CAO via `uv tool install` instead of `-e .`,
+# that ships the bundle prebuilt.
+cd /path/to/cli-agent-orchestrator/web && npm install && npm run build
+
+cao install /path/to/cli-agent-orchestrator/examples/task-forge/*.md
+```
+
+Then, per project you want the pipeline enabled on: create three AGENT
+identities (`pm-bot`, `dev-bot`, `review-bot`), point each one's
+`webhookUrl` at `http://127.0.0.1:4100/webhook?secret=<BRIDGE_SHARED_SECRET>`,
+add the three automation rules described in the bridge's design doc, and
+set the project's `repoPath` (project settings) to an **isolated** local
+checkout — the bridge refuses to launch agents for a project with no
+`repoPath` set, specifically so it can never default to a live working tree.
 
 ## API overview
 
