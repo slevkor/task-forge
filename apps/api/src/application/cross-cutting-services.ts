@@ -31,7 +31,14 @@ export class ContextApplicationService implements ContextService {
       if (!project) throw new NotFoundError("Project");
       if (task && task.projectId !== project.id) throw new ValidationError("The task does not belong to the requested project");
       if (context.actor.role !== "ADMIN" && !(await repositories.memberships.isMember(project.id, context.actor.userId))) throw new ForbiddenError("You are not a member of this project");
-      return { project, task: task ? { ...task, phase: task.phaseId ? await repositories.phases.findById(task.phaseId) : null } : null };
+      // Agents resolve a ticket through this one call (docs/AGENT_API.md
+      // calls it out as "the one call that matters"); notes were the
+      // conspicuous omission -- an agent that only calls /context never sees
+      // a human's clarifying reply unless its own prompt separately mandates
+      // a second call to /tasks/:id/updates, which not every persona did.
+      const updates = task ? await repositories.updates.listForTask(task.id) : [];
+      const hydratedUpdates = await Promise.all(updates.map(async (update) => ({ ...update, author: await repositories.users.findById(update.authorId) ?? undefined })));
+      return { project, task: task ? { ...task, phase: task.phaseId ? await repositories.phases.findById(task.phaseId) : null } : null, updates: hydratedUpdates };
     });
   }
 }

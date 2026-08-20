@@ -60,7 +60,7 @@ curl -sS "http://127.0.0.1:4000/api/context?project=TAS&task=TAS-4" \
   -H "Authorization: Bearer $AGENT_TOKEN"
 ```
 
-`project` accepts a project key or UUID. `task` accepts a readable key such as `TAS-4` or a task UUID. The response includes the project and the complete task, including tags, dependencies, attachments, assignment, branch, and pull-request metadata.
+`project` accepts a project key or UUID. `task` accepts a readable key such as `TAS-4` or a task UUID. The response includes the project, the complete task (tags, dependencies, attachments, assignment, branch, pull-request metadata), and `updates` — every note on the task, newest first, each with its hydrated `author`. This is the one call an agent needs to resolve a ticket's full context, notes included; there is no separate call required to see whether a human has replied.
 
 ## Projects
 

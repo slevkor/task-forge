@@ -81,7 +81,7 @@ export const api = {
   readNotification: (id: string) => request<{ notification: Notification }>(`/notifications/${id}/read`, { method: "PATCH" }),
   readAllNotifications: () => request<{ updated: number }>("/notifications/read-all", { method: "POST" }),
   search: (query: string) => request<{ results: TaskSearchResult[] }>(`/search?q=${encodeURIComponent(query)}`),
-  context: (params: { project?: string; task?: string }) => request<{ project: Project; task: Task | null }>(`/context?${new URLSearchParams(Object.entries(params).filter((entry): entry is [string, string] => Boolean(entry[1]))).toString()}`),
+  context: (params: { project?: string; task?: string }) => request<{ project: Project; task: Task | null; updates: TaskNote[] }>(`/context?${new URLSearchParams(Object.entries(params).filter((entry): entry is [string, string] => Boolean(entry[1]))).toString()}`),
   taskActivity: (taskId: string, limit = 30) => request<{ activity: ActivityEvent[] }>(`/activity?taskId=${taskId}&limit=${limit}`),
   projectActivity: (projectId: string, limit = 50) => request<{ activity: ActivityEvent[] }>(`/activity?projectId=${projectId}&limit=${limit}`),
   activityFeed: (limit = 50) => request<{ activity: ActivityEvent[] }>(`/activity?limit=${limit}`),

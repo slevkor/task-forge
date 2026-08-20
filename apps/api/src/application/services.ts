@@ -23,7 +23,7 @@ export interface AuthService {
 }
 
 export interface ContextService {
-  resolve(context: RequestContext, input: { project?: string; task?: string }): Promise<{ project: ProjectEntity; task: TaskEntity | null }>;
+  resolve(context: RequestContext, input: { project?: string; task?: string }): Promise<{ project: ProjectEntity; task: TaskEntity | null; updates: TaskUpdateEntity[] }>;
 }
 
 export interface ProjectService {
