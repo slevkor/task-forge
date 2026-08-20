@@ -3,7 +3,18 @@ import { z } from "zod";
 export const userKindSchema = z.enum(["HUMAN", "AGENT"]);
 export const userRoleSchema = z.enum(["ADMIN", "MEMBER"]);
 export const projectMemberRoleSchema = z.enum(["OWNER", "MEMBER"]);
-export const taskStatusSchema = z.enum(["BACKLOG", "TODO", "IN_PROGRESS", "IN_REVIEW", "DONE"]);
+export const taskStatusSchema = z.enum([
+  "BACKLOG",
+  "REFINING",
+  "NEEDS_INFO",
+  "TODO",
+  "IN_PROGRESS",
+  "IN_REVIEW",
+  "CHANGES_REQUESTED",
+  "READY_FOR_MERGE",
+  "ESCALATED",
+  "DONE",
+]);
 export const taskPrioritySchema = z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]);
 export const taskTypeSchema = z.enum(["FEATURE", "BUG", "INFRA", "UPDATE", "SECURITY", "DOCS", "CHORE"]);
 export const pullRequestStateSchema = z.enum(["DRAFT", "OPEN", "MERGED", "CLOSED"]);
@@ -26,6 +37,10 @@ export const projectCreateSchema = z.object({
   name: z.string().trim().min(2).max(120),
   description: z.string().trim().max(2000).default(""),
   repoUrl: z.string().url().nullable().optional(),
+  // Absolute filesystem path to a local checkout an agent orchestrator (e.g.
+  // the CAO bridge) should run against for this project. Deliberately not a
+  // URL: it's a path on whatever machine runs the orchestrator, not a link.
+  repoPath: z.string().trim().min(1).max(500).nullable().optional(),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).default("#6554C0"),
 });
 
@@ -56,6 +71,7 @@ export const taskCreateSchema = z.object({
   pullRequestUrl: z.string().url().nullable().optional(),
   pullRequestTitle: z.string().trim().max(240).nullable().optional(),
   pullRequestState: pullRequestStateSchema.nullable().optional(),
+  reviewRounds: z.number().int().min(0).max(50).default(0),
   tags: taskTagsSchema.optional(),
   dependencyIds: taskDependencyIdsSchema.optional(),
 });
@@ -163,6 +179,7 @@ export interface Project {
   name: string;
   description: string;
   repoUrl: string | null;
+  repoPath: string | null;
   color: string;
   sortOrder: number;
   ownerId: string;
@@ -222,6 +239,7 @@ export interface Task {
   pullRequestUrl: string | null;
   pullRequestTitle: string | null;
   pullRequestState: PullRequestState | null;
+  reviewRounds: number;
   position: number;
   createdAt: string;
   updatedAt: string;

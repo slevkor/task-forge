@@ -4,6 +4,7 @@ import { ForbiddenError, NotFoundError, ValidationError } from "./errors.js";
 import type { ProjectContext, RequestContext } from "./context.js";
 import type { AutomationEntity, TaskEntity } from "./models.js";
 import type { RepositorySet, UnitOfWork } from "./repositories.js";
+import { dispatchTaskAssignedWebhook } from "../lib/webhook.js";
 
 export class AutomationApplicationService {
   constructor(private readonly unitOfWork: UnitOfWork, private readonly now = () => new Date().toISOString()) {}
@@ -27,7 +28,11 @@ export class AutomationEngine {
       if (!rule.enabled || rule.trigger !== trigger || !this.actorMatches(rule, context) || !rule.conditions.every((c) => this.condition(c, before ? value(before, c.field) : undefined, value(current, c.field)))) continue;
       const patch: Record<string, unknown> = {};
       for (const action of rule.actions) patch[action.field] = action.valueType === "actor" ? context.actor.userId : action.valueType === "null" ? null : action.valueType === "static" ? action.value : action.value;
-      if (Object.keys(patch).length) current = await r.tasks.update(current.id, patch);
+      if (Object.keys(patch).length) {
+        const previousAssignee = current.assigneeId;
+        current = await r.tasks.update(current.id, patch);
+        if ("assigneeId" in patch && current.assigneeId !== previousAssignee) await dispatchTaskAssignedWebhook(r, current, context);
+      }
     }
     return current;
   }

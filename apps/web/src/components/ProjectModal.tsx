@@ -2,12 +2,13 @@ import { useState, type FormEvent } from "react";
 import { X } from "lucide-react";
 import type { Project } from "@taskforge/contracts";
 
-export function ProjectModal({ project, projects = [], onClose, onSave }: { project?: Project | null; projects?: Project[]; onClose: () => void; onSave: (project: { key: string; name: string; description: string; repoUrl: string | null; color: string }) => Promise<void> }) {
+export function ProjectModal({ project, projects = [], onClose, onSave }: { project?: Project | null; projects?: Project[]; onClose: () => void; onSave: (project: { key: string; name: string; description: string; repoUrl: string | null; repoPath: string | null; color: string }) => Promise<void> }) {
   const [name, setName] = useState(project?.name ?? "");
   const [key, setKey] = useState(project?.key ?? "");
   const [keyEdited, setKeyEdited] = useState(false);
   const [description, setDescription] = useState(project?.description ?? "");
   const [repoUrl, setRepoUrl] = useState(project?.repoUrl ?? "");
+  const [repoPath, setRepoPath] = useState(project?.repoPath ?? "");
   const [color, setColor] = useState(project?.color ?? "#6554C0");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -24,7 +25,7 @@ export function ProjectModal({ project, projects = [], onClose, onSave }: { proj
 
   async function submit(event: FormEvent) {
     event.preventDefault(); setSaving(true); setError("");
-    try { await onSave({ name, key, description, repoUrl: repoUrl || null, color }); onClose(); }
+    try { await onSave({ name, key, description, repoUrl: repoUrl || null, repoPath: repoPath || null, color }); onClose(); }
     catch (err) { setError(err instanceof Error ? err.message : `Could not ${project ? "update" : "create"} project`); }
     finally { setSaving(false); }
   }
@@ -37,6 +38,8 @@ export function ProjectModal({ project, projects = [], onClose, onSave }: { proj
         <div className="project-form-row"><label>Project name<input autoFocus value={name} onChange={(e) => { const nextName = e.target.value; setName(nextName); if (!keyEdited && !project) setKey(suggestedKey(nextName)); }} placeholder="Website launch" required /></label><label>Key<input value={key} onChange={(e) => { setKeyEdited(true); setKey(e.target.value.replace(/[^A-Za-z0-9]/g, "").toUpperCase()); }} placeholder="WEB" minLength={2} maxLength={8} required disabled={Boolean(project)} /></label></div>
         <label>Description<textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="What is this project trying to achieve?" /></label>
         <label>Repository URL <span className="optional">Optional</span><input type="url" value={repoUrl} onChange={(e) => setRepoUrl(e.target.value)} placeholder="https://github.com/your-org/repo" /></label>
+        <label>Local repo path <span className="optional">Optional</span><input type="text" value={repoPath} onChange={(e) => setRepoPath(e.target.value)} placeholder="/Users/you/code/repo" /></label>
+        <p>Where an agent orchestrator should run for this project's tasks — a real filesystem path, not a URL. Keep it pointed at an isolated checkout, not one you're actively working in.</p>
         <label>Project color<input type="color" value={color} onChange={(e) => setColor(e.target.value)} /></label>
         {error && <div className="form-error">{error}</div>}
         <footer><button type="button" className="button button-secondary" onClick={onClose}>Cancel</button><button className="button button-primary" disabled={saving}>{saving ? (project ? "Saving…" : "Creating…") : (project ? "Save changes" : "Create project")}</button></footer>

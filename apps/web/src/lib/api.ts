@@ -50,9 +50,9 @@ export const api = {
   createPhase: (projectId: string, input: { number: number; goal: string; isActive: boolean }) => request<{ phase: Phase }>(`/projects/${projectId}/phases`, { method: "POST", body: input }),
   updatePhase: (id: string, input: Partial<{ number: number; goal: string; isActive: boolean }>) => request<{ phase: Phase }>(`/phases/${id}`, { method: "PATCH", body: input }),
   deletePhase: (id: string) => request<void>(`/phases/${id}`, { method: "DELETE" }),
-  createProject: (input: { key: string; name: string; description: string; repoUrl: string | null; color: string }) =>
+  createProject: (input: { key: string; name: string; description: string; repoUrl: string | null; repoPath: string | null; color: string }) =>
     request<{ project: Project }>("/projects", { method: "POST", body: input }),
-  updateProject: (id: string, input: { name?: string; description?: string; repoUrl?: string | null; color?: string }) =>
+  updateProject: (id: string, input: { name?: string; description?: string; repoUrl?: string | null; repoPath?: string | null; color?: string }) =>
     request<{ project: Project }>(`/projects/${id}`, { method: "PATCH", body: input }),
   deleteProject: (id: string) => request<void>(`/projects/${id}`, { method: "DELETE" }),
   tasks: (projectId: string) => request<{ tasks: Task[] }>(`/projects/${projectId}/tasks`),

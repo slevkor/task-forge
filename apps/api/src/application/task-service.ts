@@ -6,7 +6,7 @@ import type { TaskDependencyEntity, TaskEntity, TaskUpdateEntity } from "./model
 import type { RepositorySet, UnitOfWork } from "./repositories.js";
 import type { TaskCreateInput, TaskFilters, TaskService, TaskUpdateInput } from "./services.js";
 import { AutomationEngine } from "./automation-service.js";
-import { dispatchWebhook } from "../lib/webhook.js";
+import { dispatchTaskAssignedWebhook } from "../lib/webhook.js";
 
 export class TaskApplicationService implements TaskService {
   constructor(private readonly unitOfWork: UnitOfWork, private readonly now: () => string = () => new Date().toISOString(), private readonly newId: () => string = randomUUID, private readonly automationEngine = new AutomationEngine()) {}
@@ -21,7 +21,7 @@ export class TaskApplicationService implements TaskService {
   }
 
   private BRANCH_FIELDS = new Set(["branch", "pullRequestUrl", "pullRequestTitle", "pullRequestState"] as const);
-  private META_FIELDS = new Set(["title", "description", "definitionOfDone", "priority", "type", "assigneeId", "parentId", "dueDate", "estimatePoints", "phaseId", "tags", "dependencyIds"] as const);
+  private META_FIELDS = new Set(["title", "description", "definitionOfDone", "priority", "type", "assigneeId", "parentId", "dueDate", "estimatePoints", "phaseId", "reviewRounds", "tags", "dependencyIds"] as const);
 
 
   async get(context: RequestContext, taskId: string) { return this.unitOfWork.run(async (repositories) => { const task = await this.requireTask(repositories, taskId); await this.assertProjectAccess(repositories, context, task.projectId); return this.hydrate(repositories, task); }); }
@@ -66,7 +66,7 @@ export class TaskApplicationService implements TaskService {
       if (assigneeChanged && input.assigneeId && input.assigneeId !== context.actor.userId) await this.notify(repositories, input.assigneeId, { ...existing, ...task, title: input.title ?? existing.title }, context, "TASK_ASSIGNED", "Task assigned to you");
       if (input.status === "IN_REVIEW" && existing.status !== "IN_REVIEW" && existing.creatorId !== context.actor.userId) await this.notify(repositories, existing.creatorId, { ...existing, ...task, title: input.title ?? existing.title }, context, "REVIEW_REQUESTED", "Review requested");
       const automated = await this.automationEngine.apply(repositories, context, existing, { ...task, updatedAt: now }, "TASK_UPDATED");
-      if (assigneeChanged && input.assigneeId) await this.dispatchWebhookIfNeeded(repositories, { ...task, assigneeId: input.assigneeId }, context);
+      if (assigneeChanged && input.assigneeId) await dispatchTaskAssignedWebhook(repositories, { ...task, assigneeId: input.assigneeId }, context);
       return this.hydrate(repositories, automated);
     });
   }
@@ -102,6 +102,11 @@ export class TaskApplicationService implements TaskService {
       await repositories.activity.record({ projectId: task.projectId, taskId, actorId: context.actor.userId, action: "task.note_added" });
       const recipients = new Set([task.creatorId, task.assigneeId].filter((id): id is string => Boolean(id && id !== context.actor.userId)));
       for (const recipientId of recipients) await repositories.notifications.notify({ userId: recipientId, projectId: task.projectId, taskId, type: "TASK_UPDATED", title: "New task update", message: `${context.actor.name ?? "A teammate"} posted an update on “${task.title}”.` });
+      // A human answering a NEEDS_INFO question should wake the assigned
+      // agent back up without a manual status flip. NEEDS_INFO is the one
+      // pipeline status that doesn't reassign the task, so nothing else
+      // would ever fire this bot's webhook again.
+      if (context.actor.kind === "HUMAN" && task.status === "NEEDS_INFO") await dispatchTaskAssignedWebhook(repositories, task, context, "task.note_added", { noteId: update.id });
       return { ...update, author: await repositories.users.findById(update.authorId) ?? undefined };
     });
   }
@@ -143,23 +148,4 @@ export class TaskApplicationService implements TaskService {
 
   private async notify(repositories: RepositorySet, userId: string, task: TaskEntity, context: RequestContext, type: string, title: string) { await repositories.notifications.notify({ userId, projectId: task.projectId, taskId: task.id, type, title, message: `${context.actor.name ?? "A teammate"} updated “${task.title}”.` }); }
 
-  private async dispatchWebhookIfNeeded(repositories: RepositorySet, task: TaskEntity, context: RequestContext) {
-    if (!task.assigneeId) return;
-    const assignee = await repositories.users.findById(task.assigneeId);
-    if (!assignee || assignee.kind !== "AGENT" || !assignee.webhookUrl) return;
-    const project = await repositories.projects.findById(task.projectId);
-    dispatchWebhook(assignee.webhookUrl, {
-      event: "task.assigned",
-      task: {
-        id: task.id, number: task.number, title: task.title,
-        description: task.description, definitionOfDone: task.definitionOfDone,
-        status: task.status, priority: task.priority, type: task.type,
-        branch: task.branch, projectId: task.projectId,
-        projectKey: project?.key, projectName: project?.name,
-        assigneeId: task.assigneeId,
-      },
-      assignedBy: { id: context.actor.userId, name: context.actor.name },
-      timestamp: new Date().toISOString(),
-    });
-  }
 }

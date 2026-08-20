@@ -115,7 +115,7 @@ Task creation and update fields include:
 | --- | --- |
 | `title` | Required string |
 | `description`, `definitionOfDone` | Optional text |
-| `status` | `BACKLOG`, `TODO`, `IN_PROGRESS`, `IN_REVIEW`, `DONE` |
+| `status` | `BACKLOG`, `REFINING`, `NEEDS_INFO`, `TODO`, `IN_PROGRESS`, `IN_REVIEW`, `CHANGES_REQUESTED`, `READY_FOR_MERGE`, `ESCALATED`, `DONE` |
 | `priority` | `LOW`, `MEDIUM`, `HIGH`, `URGENT` |
 | `type` | `FEATURE`, `BUG`, `INFRA`, `UPDATE`, `SECURITY`, `DOCS`, `CHORE` |
 | `assigneeId` | Project-member UUID or `null` |

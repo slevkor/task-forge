@@ -36,6 +36,7 @@ export interface ProjectEntity {
   name: string;
   description: string;
   repoUrl: string | null;
+  repoPath: string | null;
   color: string;
   sortOrder: number;
   ownerId: string;
@@ -76,6 +77,7 @@ export interface TaskEntity {
   pullRequestUrl: string | null;
   pullRequestTitle: string | null;
   pullRequestState: PullRequestState | null;
+  reviewRounds: number;
   position: number;
   createdAt: string;
   updatedAt: string;

@@ -3,9 +3,14 @@ import { Bug, FileText, RefreshCw, Server, ShieldCheck, Sparkles, Wrench, type L
 
 export const statusMeta: Record<TaskStatus, { label: string; tone: string }> = {
   BACKLOG: { label: "Backlog", tone: "slate" },
-  TODO: { label: "To do", tone: "blue" },
+  REFINING: { label: "Refining", tone: "purple" },
+  NEEDS_INFO: { label: "Needs info", tone: "cyan" },
+  TODO: { label: "Ready for dev", tone: "blue" },
   IN_PROGRESS: { label: "In progress", tone: "purple" },
   IN_REVIEW: { label: "In review", tone: "amber" },
+  CHANGES_REQUESTED: { label: "Changes requested", tone: "purple" },
+  READY_FOR_MERGE: { label: "Ready for merge", tone: "teal" },
+  ESCALATED: { label: "Escalated", tone: "red" },
   DONE: { label: "Done", tone: "green" },
 };
 
